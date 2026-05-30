@@ -17,6 +17,7 @@ public class GameController {
     private final SpellMenu spellMenu;
 
     private boolean gameOver = false;
+    private int lastRoll = 0;
 
     public GameController(Board board, GameLogPanel gameLogPanel, SpellMenu spellMenu) {
         this.board        = board;
@@ -79,6 +80,7 @@ public class GameController {
         Player current = gameState.getCurrentPlayer();
 
         int roll = current.rollDice();
+        lastRoll = roll;
         gameLogPanel.log(current.getName() + " rolled a " + roll + ".");
 
         current.move(roll, Board.TOTAL);
@@ -152,4 +154,5 @@ public class GameController {
     public GameState getGameState() { return gameState; }
     public Board     getBoard()     { return board; }
     public boolean   isGameOver()   { return gameOver; }
+    public int       getLastRoll()  { return lastRoll; }
 }

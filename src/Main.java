@@ -10,6 +10,7 @@ import java.util.List;
 public class Main {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
+            view.DiceAssetGenerator.generateIfMissing();
             JFrame frame = new JFrame("Battle of Wizards");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setUndecorated(true);

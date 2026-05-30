@@ -63,6 +63,7 @@ public class SetupScreen extends JPanel {
         // Column headers — built dynamically inside buildNameFields()
         nameFields.setBackground(new Color(40, 28, 70));
         nameFields.setAlignmentX(CENTER_ALIGNMENT);
+        nameFields.setLayout(new GridLayout(0, 4, 8, 8)); // 4 columns: icon, player, name, AI
 
         JButton startBtn = makeButton("Start Game", new Color(40, 110, 60));
         startBtn.setMaximumSize(new Dimension(cardW, 44));
@@ -99,6 +100,7 @@ public class SetupScreen extends JPanel {
         aiToggles.clear();
 
         // Column headers — shown only after Set Players is clicked
+        nameFields.add(makeLabel("Icon"));
         JLabel h1 = makeLabel("Player");
         JLabel h2 = makeLabel("Name");
         JLabel h3 = makeLabel("AI Bot?");
@@ -107,10 +109,31 @@ public class SetupScreen extends JPanel {
         nameFields.add(h2);
         nameFields.add(h3);
 
+        String[] pieceFiles = {
+            "assets/icons/piece_blue.png",
+            "assets/icons/piece_red.png",
+            "assets/icons/piece_green.png",
+            "assets/icons/piece_yellow.png"
+        };
+
         Color[] pColors = UIConstants.PLAYER_COLORS;
 
         for (int i = 0; i < n; i++) {
-            // Column 1: colored player label
+            // Column 1: piece icon preview
+            java.awt.image.BufferedImage img = view.AssetLoader.load(pieceFiles[i]);
+            JLabel iconLabel;
+            if (img != null) {
+                iconLabel = new JLabel(new ImageIcon(view.AssetLoader.scale(img, 36, 36)));
+            } else {
+                // Fallback colored circle if asset missing
+                iconLabel = new JLabel("●");
+                iconLabel.setForeground(pColors[i % pColors.length]);
+                iconLabel.setFont(UIConstants.FONT_TITLE);
+            }
+            iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
+            nameFields.add(iconLabel);
+
+            // Column 2: colored player label
             JLabel lbl = new JLabel("Player " + (i + 1));
             lbl.setForeground(pColors[i % pColors.length]);
             lbl.setFont(UIConstants.FONT_BOLD);

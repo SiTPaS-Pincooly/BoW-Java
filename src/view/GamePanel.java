@@ -260,6 +260,7 @@ public class GamePanel extends JPanel {
             });
         } else {
             controller.handleDicePhase();
+            boardRenderer.showDice(controller.getLastRoll());
             if (!controller.isGameOver()) {
                 controller.nextTurn();
                 phase = 0;
@@ -301,6 +302,7 @@ public class GamePanel extends JPanel {
             // Step 2 — AI dice phase after another 1.5s
             javax.swing.Timer diceTimer = new javax.swing.Timer(1500, e2 -> {
                 controller.handleDicePhase();
+                boardRenderer.showDice(controller.getLastRoll());
 
                 if (!controller.isGameOver()) {
                     controller.nextTurn();
@@ -352,7 +354,7 @@ public class GamePanel extends JPanel {
             actionButton.setEnabled(true);
         }
 
-        boardRenderer.update(controller.getBoard(), players);
+        boardRenderer.update(controller.getBoard(), players, pidx);
 
         for (int i = 0; i < statPanels.length; i++) {
             if (statPanels[i] != null && i < players.size()) {

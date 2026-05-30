@@ -13,6 +13,10 @@ public class BoardRenderer extends JPanel {
 
     private Board        board;
     private List<Player> players;
+    private int          currentPlayerIndex = 0;
+
+    private int  diceOverlayFace = 0;   // 0 = hidden
+    private javax.swing.Timer diceClearTimer;
 
     public BoardRenderer() {
         int size = UIConstants.BOARD_PX;
@@ -22,9 +26,24 @@ public class BoardRenderer extends JPanel {
         setBackground(UIConstants.BG);
     }
 
-    public void update(Board board, List<Player> players) {
-        this.board   = board;
-        this.players = players;
+    /** Show the dice face centered on the board for ~600 ms, then hide it. */
+    public void showDice(int face) {
+        if (diceClearTimer != null) diceClearTimer.stop();
+        diceOverlayFace = face;
+        repaint();
+        diceClearTimer = new javax.swing.Timer(600, e -> {
+            diceOverlayFace = 0;
+            repaint();
+            ((javax.swing.Timer) e.getSource()).stop();
+        });
+        diceClearTimer.setRepeats(false);
+        diceClearTimer.start();
+    }
+
+    public void update(Board board, List<Player> players, int currentPlayerIndex) {
+        this.board               = board;
+        this.players             = players;
+        this.currentPlayerIndex  = currentPlayerIndex;
         paintImmediately(0, 0, getWidth(), getHeight());
     }
 
@@ -86,40 +105,91 @@ public class BoardRenderer extends JPanel {
             "assets/icons/piece_yellow.png"
         };
 
-        for (int i = 0; i < players.size(); i++) {
-            Player p    = players.get(i);
-            int[] pos   = Board.getScreenPosition(p.getPosition(), cs);
-            int x       = pos[0];
-            int y       = pos[1];
-            int r       = Math.max(8, cs / 4);
-            Color color = UIConstants.PLAYER_COLORS[i % UIConstants.PLAYER_COLORS.length];
+        // Two-pass drawing: non-current players first, current player on top
+        for (int pass = 0; pass < 2; pass++) {
+            for (int i = 0; i < players.size(); i++) {
+                boolean isCurrent = (i == currentPlayerIndex);
 
-            BufferedImage avatar = AssetLoader.load(pieceFiles[i % pieceFiles.length]);
+                // Pass 0: draw non-current players only
+                // Pass 1: draw current player only
+                if (pass == 0 && isCurrent) continue;
+                if (pass == 1 && !isCurrent) continue;
 
-            if (avatar != null) {
-                // Draw avatar scaled to cell size
-                g2.drawImage(AssetLoader.scale(avatar, cs, cs), x, y, null);
+                Player p    = players.get(i);
+                int[] pos   = Board.getScreenPosition(p.getPosition(), cs);
+                int x       = pos[0];
+                int y       = pos[1];
+                int r       = Math.max(8, cs / 4);
+                Color color = UIConstants.PLAYER_COLORS[i % UIConstants.PLAYER_COLORS.length];
+
+                BufferedImage avatar = AssetLoader.load(pieceFiles[i % pieceFiles.length]);
+
+                if (avatar != null) {
+                    // Draw glow ring around current player's icon
+                    if (isCurrent) {
+                        g2.setColor(new Color(
+                            color.getRed(), color.getGreen(), color.getBlue(), 180));
+                        g2.setStroke(new BasicStroke(4));
+                        g2.drawRoundRect(x + 2, y + 2, cs - 4, cs - 4, 8, 8);
+
+                        // Outer pulse ring
+                        g2.setColor(new Color(255, 255, 255, 60));
+                        g2.setStroke(new BasicStroke(2));
+                        g2.drawRoundRect(x, y, cs, cs, 8, 8);
+                    }
+                    g2.drawImage(AssetLoader.scale(avatar, cs, cs), x, y, null);
+                } else {
+                    // Fallback: colored circle
+                    int cx = x + cs / 2;
+                    int cy = y + cs / 2;
+
+                    // Glow ring for current player
+                    if (isCurrent) {
+                        g2.setColor(new Color(
+                            color.getRed(), color.getGreen(), color.getBlue(), 120));
+                        g2.setStroke(new BasicStroke(4));
+                        g2.drawOval(cx - r - 6, cy - r - 6, (r + 6) * 2, (r + 6) * 2);
+                    }
+
+                    g2.setColor(new Color(0, 0, 0, 80));
+                    g2.fillOval(cx - r + 2, cy - r + 2, r * 2, r * 2);
+
+                    g2.setColor(color);
+                    g2.fillOval(cx - r, cy - r, r * 2, r * 2);
+
+                    g2.setColor(Color.WHITE);
+                    g2.setStroke(new BasicStroke(1.5f));
+                    g2.drawOval(cx - r, cy - r, r * 2, r * 2);
+
+                    g2.setFont(UIConstants.FONT_BOLD);
+                    FontMetrics fm = g2.getFontMetrics();
+                    String label   = String.valueOf(i + 1);
+                    g2.drawString(label,
+                        cx - fm.stringWidth(label) / 2,
+                        cy + fm.getAscent() / 2 - 1);
+                }
+            }
+        }
+
+        // Dice overlay — centered on the board
+        if (diceOverlayFace >= 1 && diceOverlayFace <= 6) {
+            int diceSize = UIConstants.CELL_SIZE * 2;
+            int dx = (getWidth()  - diceSize) / 2;
+            int dy = (getHeight() - diceSize) / 2;
+
+            BufferedImage diceImg = AssetLoader.load(DiceAssetGenerator.pathFor(diceOverlayFace));
+            if (diceImg != null) {
+                g2.drawImage(AssetLoader.scale(diceImg, diceSize, diceSize), dx, dy, null);
             } else {
-                // Fallback: colored circle if art not ready
-                int cx = x + cs / 2;
-                int cy = y + cs / 2;
-
-                g2.setColor(new Color(0, 0, 0, 80));
-                g2.fillOval(cx - r + 2, cy - r + 2, r * 2, r * 2);
-
-                g2.setColor(color);
-                g2.fillOval(cx - r, cy - r, r * 2, r * 2);
-
+                // Fallback: purple square with number
+                g2.setColor(new Color(50, 30, 90, 220));
+                g2.fillRoundRect(dx, dy, diceSize, diceSize, 16, 16);
                 g2.setColor(Color.WHITE);
-                g2.setStroke(new BasicStroke(1.5f));
-                g2.drawOval(cx - r, cy - r, r * 2, r * 2);
-
-                g2.setFont(UIConstants.FONT_BOLD);
+                g2.setFont(UIConstants.FONT_TITLE.deriveFont((float) diceSize / 2));
                 FontMetrics fm = g2.getFontMetrics();
-                String label   = String.valueOf(i + 1);
-                g2.drawString(label,
-                    cx - fm.stringWidth(label) / 2,
-                    cy + fm.getAscent() / 2 - 1);
+                String s = String.valueOf(diceOverlayFace);
+                g2.drawString(s, dx + (diceSize - fm.stringWidth(s)) / 2,
+                              dy + (diceSize + fm.getAscent()) / 2 - 4);
             }
         }
     }
